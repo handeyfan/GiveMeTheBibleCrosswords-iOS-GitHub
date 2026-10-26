@@ -8,12 +8,41 @@ on:
   push:
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: macos-latest
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
+
+      - name: Apply 3.0.1 content update (Bible-word theme names, Acts 12:4) and save it to the repository
+        run: |
+          python3 - <<'PY'
+          import io
+          def sub(path, pairs):
+              s = io.open(path, encoding='utf-8').read(); o = s
+              for a, b in pairs:
+                  s = s.replace(a, b)
+              if s != o:
+                  io.open(path, 'w', encoding='utf-8').write(s); print('updated', path)
+          T = [('Luke: The Nativity', 'Luke: The Births of John and Jesus'), ('The Christmas Story', 'The Birth of Jesus'), ('Feasts and Holy Days', 'Feasts of Israel')]
+          sub('www/data/themes.js', T)
+          sub('www/data/puzzles.js', T)
+          sub('www/data/kjv.js', [('intending after Easter to bring him forth', 'intending after Passover to bring him forth')])
+          p = 'www/js/app.js'; s = io.open(p, encoding='utf-8').read()
+          if 'fix301' not in s:
+              anchor = "  let pid = G.get('profile');\n"
+              s = s.replace(anchor, "  (function renameThemes() { // v3.0.1: theme names use Bible words only; update titles already in saves and records\n    if (G.get('fix301')) return;\n    const R = [['Luke: The Nativity', 'Luke: The Births of John and Jesus'], ['The Christmas Story', 'The Birth of Jesus'], ['Feasts and Holy Days', 'Feasts of Israel'], ['after Easter', 'after Passover']];\n    G.get('profiles', []).forEach((pr) => ['saves', 'done'].forEach((k) => {\n      const v = G.get('u.' + pr.id + '.' + k); if (v === undefined) return;\n      let t = JSON.stringify(v); R.forEach(([a, b]) => { t = t.split(a).join(b); }); G.set('u.' + pr.id + '.' + k, JSON.parse(t));\n    }));\n    G.set('fix301', true);\n  })();\n" + anchor, 1)
+              io.open(p, 'w', encoding='utf-8').write(s); print('updated', p)
+          PY
+          if [ -n "$(git status --porcelain)" ]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898283+github-actions[bot]@users.noreply.github.com"
+            git add -A && git commit -m "Update to 3.0.1: theme names use Bible words; Acts 12:4 reads Passover" && git push
+          fi
 
       - name: Select latest Xcode
         run: |
