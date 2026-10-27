@@ -44,6 +44,15 @@
     G.set('profile', id);
     PER_PROFILE.forEach((k) => { const v = G.get(k); if (v !== undefined) { G.set('u.' + id + '.' + k, v); G.del(k); } });
   })();
+  (function renameThemes() { // v3.0.1: theme names use Bible words only; update titles already in saves and records
+    if (G.get('fix301')) return;
+    const R = [['Luke: The Nativity', 'Luke: The Births of John and Jesus'], ['The Christmas Story', 'The Birth of Jesus'], ['Feasts and Holy Days', 'Feasts of Israel'], ['after Easter', 'after Passover']];
+    G.get('profiles', []).forEach((pr) => ['saves', 'done'].forEach((k) => {
+      const v = G.get('u.' + pr.id + '.' + k); if (v === undefined) return;
+      let t = JSON.stringify(v); R.forEach(([a, b]) => { t = t.split(a).join(b); }); G.set('u.' + pr.id + '.' + k, JSON.parse(t));
+    }));
+    G.set('fix301', true);
+  })();
   let pid = G.get('profile');
   if (!G.get('profiles').some((p) => p.id === pid)) { pid = G.get('profiles')[0].id; G.set('profile', pid); }
   const profiles = () => G.get('profiles', []);
